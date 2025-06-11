@@ -1,0 +1,42 @@
+version: '3.8'
+services:
+
+  vehicle-application:
+    build: .
+    container_name: vehicle-application
+    image: gtbarbosa/fiap-vehicle-application:latest
+    ports:
+      - "8083:8083"
+    environment:
+      APP_PORT: 8083
+      ISSUER_URI: http://keycloak:8080/realms/user-management
+      JWK_SET_URI: http://keycloak:8080/realms/user-management/protocol/openid-connect/certs
+      URL_DATABASE: jdbc:mysql://mysql-db:3306/vehicle
+      USER_DATABASE: user
+      PASSWORD_DATABASE: pass
+    networks:
+      - vehicle-application-network
+    depends_on:
+      - mysql-db
+
+  mysql-db:
+    image: mysql:8
+    container_name: mysql-vehicle-application-db
+    ports:
+      - "3307:3306"
+    networks:
+      - vehicle-application-network
+    environment:
+      MYSQL_ROOT_PASSWORD: pass
+      MYSQL_DATABASE: vehicle
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppass"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  vehicle-application-network:
+    external: true
