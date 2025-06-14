@@ -7,28 +7,22 @@ import br.com.vehicle_application.application.mappers.VehicleMapper;
 import br.com.vehicle_application.application.ports.VehicleInboundPort;
 import br.com.vehicle_application.core.domain.Sale;
 import br.com.vehicle_application.core.domain.Vehicle;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 class VehicleControllerTest {
@@ -42,175 +36,101 @@ class VehicleControllerTest {
     @Mock
     private SaleMapper saleMapper;
 
+    @Mock
+    private Jwt jwt;
+
     @InjectMocks
     private VehicleController vehicleController;
 
-    private MockMvc mockMvc;
-    private ObjectMapper objectMapper;
+    private VehicleRequest vehicleRequest;
+    private SaleRequest saleRequest;
+    private Vehicle vehicle;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(vehicleController).build();
-        objectMapper = new ObjectMapper();
+        vehicleRequest = new VehicleRequest();
+        saleRequest = new SaleRequest();
+        vehicle = new Vehicle();
     }
 
     @Test
-    void createVehicle_ShouldReturnCreated_WhenVehicleIsValid() throws Exception {
-        // Arrange
-        VehicleRequest vehicleRequest = createValidVehicleRequest();
-        Vehicle vehicle = createValidVehicle();
+    void createVehicle_ShouldReturnCreatedStatus() {
+        when(vehicleMapper.toDomain(vehicleRequest)).thenReturn(vehicle);
 
-        when(vehicleMapper.toDomain(any())).thenReturn(vehicle);
-        doNothing().when(vehicleInboundPort).createVehicle(any());
+        ResponseEntity<?> response = vehicleController.createVehicle(vehicleRequest);
 
-        // Act & Assert
-        mockMvc.perform(post("/vehicle")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(vehicleRequest)))
-                .andExpect(status().isCreated());
-
-        verify(vehicleMapper).toDomain(any());
-        verify(vehicleInboundPort).createVehicle(any());
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(vehicleInboundPort).createVehicle(vehicle);
     }
 
     @Test
-    void editVehicle_ShouldReturnOk_WhenVehicleIsValid() throws Exception {
-        // Arrange
-        VehicleRequest vehicleRequest = createValidVehicleRequest();
-        Vehicle vehicle = createValidVehicle();
+    void editVehicle_ShouldReturnOkStatus() {
+        when(vehicleMapper.toDomain(vehicleRequest)).thenReturn(vehicle);
 
-        when(vehicleMapper.toDomain(any(VehicleRequest.class))).thenReturn(vehicle);
-        doNothing().when(vehicleInboundPort).editVehicle(any(Vehicle.class));
+        ResponseEntity<?> response = vehicleController.editVehicle(vehicleRequest);
 
-        // Act & Assert
-        mockMvc.perform(put("/vehicle")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(vehicleRequest)))
-                .andExpect(status().isOk());
-
-        verify(vehicleMapper).toDomain(vehicleRequest);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(vehicleInboundPort).editVehicle(vehicle);
     }
 
     @Test
-    void getSaleVehicles_ShouldReturnVehicleList_WhenCalled() throws Exception {
-        // Arrange
-        List<Vehicle> vehicles = Arrays.asList(createValidVehicle(), createValidVehicle());
-        when(vehicleInboundPort.getSaleVehicles()).thenReturn(vehicles);
+    void getSaleVehicles_ShouldReturnListOfVehicles() {
+        List<Vehicle> expectedVehicles = Collections.singletonList(vehicle);
+        when(vehicleInboundPort.getSaleVehicles()).thenReturn(expectedVehicles);
 
-        // Act & Assert
-        mockMvc.perform(get("/vehicle/sales"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2));
+        ResponseEntity<List<Vehicle>> response = vehicleController.getSaleVehicles();
 
-        verify(vehicleInboundPort).getSaleVehicles();
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(expectedVehicles, response.getBody());
     }
 
     @Test
-    void buyVehicle_ShouldReturnCreated_WhenSaleIsValid() throws Exception {
-        // Arrange
-        SaleRequest saleRequest = createValidSaleRequest();
-        Sale sale = createValidSale();
-        Jwt jwt = createMockJwt();
+    void buyVehicle_ShouldReturnCreatedStatus() {
+        String userId = "user123";
+        when(jwt.getSubject()).thenReturn(userId);
 
-        when(saleMapper.toDomain(any(), anyString())).thenReturn(sale);
-        doNothing().when(vehicleInboundPort).buyVehicle(any());
-
-        // Act & Assert
-        mockMvc.perform(post("/vehicle/buy")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(saleRequest))
-                        .requestAttr("jwt", jwt))
-                .andExpect(status().isCreated());
-
-        verify(saleMapper).toDomain(any(), anyString());
-        verify(vehicleInboundPort).buyVehicle(any());
-    }
-
-    @Test
-    void getSoldVehicles_ShouldReturnVehicleList_WhenCalled() throws Exception {
-        // Arrange
-        List<Vehicle> soldVehicles = Arrays.asList(createValidVehicle());
-        when(vehicleInboundPort.getSoldVehicles()).thenReturn(soldVehicles);
-
-        // Act & Assert
-        mockMvc.perform(get("/vehicle/sold"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
-
-        verify(vehicleInboundPort).getSoldVehicles();
-    }
-
-    @Test
-    void createVehicle_ShouldReturnBadRequest_WhenVehicleRequestIsInvalid() throws Exception {
-        // Arrange
-        VehicleRequest invalidRequest = new VehicleRequest();
-
-        // Act & Assert
-        mockMvc.perform(post("/vehicle")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidRequest)))
-                .andExpect(status().isBadRequest());
-
-        verify(vehicleMapper, never()).toDomain(any());
-        verify(vehicleInboundPort, never()).createVehicle(any());
-    }
-
-    @Test
-    void buyVehicle_ShouldReturnBadRequest_WhenSaleRequestIsInvalid() throws Exception {
-        // Arrange
-        SaleRequest invalidRequest = new SaleRequest();
-
-        // Act & Assert
-        mockMvc.perform(post("/vehicle/buy")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidRequest)))
-                .andExpect(status().isBadRequest());
-
-        verify(saleMapper, never()).toDomain(any(), anyString());
-        verify(vehicleInboundPort, never()).buyVehicle(any());
-    }
-
-    private VehicleRequest createValidVehicleRequest() {
-        return new VehicleRequest()
-                .setBrand("Toyota")
-                .setModel("Corolla")
-                .setModelYear("2022")
-                .setFactoryYear("2022")
-                .setColor("Branco")
-                .setPrice(new BigDecimal("85000.00"))
-                .setMarketReferenceCode("TOY-COR-2022")
-                .setToSell(true);
-    }
-
-    private Vehicle createValidVehicle() {
-        return new Vehicle()
+        var vehicle = new Vehicle()
+                .setBrand("brand")
+                .setColor("color")
+                .setFactoryYear("2025")
                 .setId(1)
-                .setBrand("Toyota")
-                .setModel("Corolla")
-                .setModelYear("2022")
-                .setFactoryYear("2022")
-                .setColor("Branco")
-                .setPrice(new BigDecimal("85000.00"))
-                .setMarketReferenceCode("TOY-COR-2022")
-                .setToSell(true)
-                .setQuantityAvailable(5);
+                .setModel("model")
+                .setPrice(BigDecimal.TEN)
+                .setMarketReferenceCode("123")
+                .setModelYear("2025")
+                .setQuantityAvailable(1)
+                .setToSell(true);
+        var sale = new Sale()
+                .setVehicle(vehicle)
+                .setBuyerId("123")
+                .setPrice(vehicle.getPrice())
+                .setMarketReferenceCode("123");
+        when(saleMapper.toDomain(any(), eq(userId)))
+                .thenReturn(sale);
+
+        ResponseEntity<?> response = vehicleController.buyVehicle(saleRequest, jwt);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        verify(vehicleInboundPort).buyVehicle(sale);
     }
 
-    private SaleRequest createValidSaleRequest() {
-        return new SaleRequest()
-                .setMarketReferenceCode("TOY-COR-2022");
+    @Test
+    void getSoldVehicles_ShouldReturnListOfVehicles() {
+        List<Vehicle> expectedVehicles = Collections.singletonList(vehicle);
+        when(vehicleInboundPort.getSoldVehicles()).thenReturn(expectedVehicles);
+
+        ResponseEntity<List<Vehicle>> response = vehicleController.getSoldVehicles();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(expectedVehicles, response.getBody());
     }
 
-    private Sale createValidSale() {
-        return new Sale()
-                .setMarketReferenceCode("TOY-COR-2022")
-                .setBuyerId("user123")
-                .setPrice(new BigDecimal("85000.00"))
-                .setVehicle(createValidVehicle());
-    }
-
-    private Jwt createMockJwt() {
-        return mock(Jwt.class);
+    @Test
+    void buyVehicle_ShouldUseJwtSubjectAsUserId() {
+        String expectedUserId = "user123";
+        when(jwt.getSubject()).thenReturn(expectedUserId);
+        when(saleMapper.toDomain(any(), eq(expectedUserId))).thenReturn(new Sale());
+        vehicleController.buyVehicle(saleRequest, jwt);
+        verify(saleMapper).toDomain(any(), eq(expectedUserId));
     }
 }

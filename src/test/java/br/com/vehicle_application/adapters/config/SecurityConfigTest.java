@@ -1,37 +1,24 @@
 package br.com.vehicle_application.adapters.config;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.CorsConfigurer;
-import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
-import org.springframework.security.config.annotation.web.configurers.SessionManagementConfigurer;
-import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
-import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
-import java.util.List;
-
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@RunWith(MockitoJUnitRunner.class)
-public class SecurityConfigTest {
+@ExtendWith(MockitoExtension.class)
+class SecurityConfigTest {
 
     @InjectMocks
     private SecurityConfig securityConfig;
@@ -39,25 +26,58 @@ public class SecurityConfigTest {
     @Mock
     private HttpSecurity httpSecurity;
 
-    @Mock
-    private CorsConfigurer<HttpSecurity> corsConfigurer;
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(securityConfig, "jwkSetUri",
+                "http://keycloak.example.com/auth/realms/vehicle/protocol/openid-connect/certs");
+    }
 
-    @Mock
-    private CsrfConfigurer<HttpSecurity> csrfConfigurer;
+    @Test
+    void testJwtDecoderBean() {
+        JwtDecoder jwtDecoder = securityConfig.jwtDecoder();
+        assertNotNull(jwtDecoder);
+        assertTrue(jwtDecoder instanceof NimbusJwtDecoder);
+    }
 
-    @Mock
-    private SessionManagementConfigurer<HttpSecurity> sessionManagementConfigurer;
+    @Test
+    void testJwtAuthenticationConverterBean() {
+        JwtAuthenticationConverter converter = securityConfig.jwtAuthenticationConverter();
+        assertNotNull(converter);
+    }
 
-    @Mock
-    private AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authorizationManagerRequestMatcherRegistry;
+    @Test
+    void testCorsConfigurationSourceBean() {
+        CorsConfigurationSource corsSource = securityConfig.corsConfigurationSource();
+        assertNotNull(corsSource);
+        assertTrue(corsSource instanceof UrlBasedCorsConfigurationSource);
+    }
 
-    @Mock
-    private OAuth2ResourceServerConfigurer<HttpSecurity> oauth2ResourceServerConfigurer;
+    @Test
+    void testFilterChain() throws Exception {
+        when(httpSecurity.cors(any())).thenReturn(httpSecurity);
+        when(httpSecurity.csrf(any())).thenReturn(httpSecurity);
+        when(httpSecurity.sessionManagement(any())).thenReturn(httpSecurity);
+        when(httpSecurity.authorizeHttpRequests(any())).thenReturn(httpSecurity);
+        when(httpSecurity.oauth2ResourceServer(any())).thenReturn(httpSecurity);
 
-    @Mock
-    private SecurityFilterChain securityFilterChain;
+        securityConfig.filterChain(httpSecurity);
 
-    private static final String JWK_SET_URI = "https://test-keycloak.com/auth/realms/test/protocol/openid_connect/certs";
+        verify(httpSecurity).cors(any());
+        verify(httpSecurity).csrf(any());
+        verify(httpSecurity).sessionManagement(any());
+        verify(httpSecurity).authorizeHttpRequests(any());
+        verify(httpSecurity).oauth2ResourceServer(any());
+    }
 
+    @Test
+    void testFilterChainWithException() throws Exception {
+        when(httpSecurity.cors(any())).thenThrow(new RuntimeException("Test exception"));
 
+        try {
+            securityConfig.filterChain(httpSecurity);
+            fail("Expected RuntimeException");
+        } catch (RuntimeException e) {
+            assertEquals("Test exception", e.getMessage());
+        }
+    }
 }
