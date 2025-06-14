@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-vehicle-application
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pod-vehicle-application
+  template:
+    metadata:
+      labels:
+        app: pod-vehicle-application
+    spec:
+      containers:
+        - name: container-vehicle-application
+          image: gtbarbosa/fiap-vehicle-application:latest
+          env:
+            - name: APP_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-configmap-vehicle-application
+                  key: APP_NAME
+            - name: ISSUER_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: app-configmap-vehicle-application
+                  key: ISSUER_URI
+            - name: JWK_SET_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: app-configmap-vehicle-application
+                  key: JWK_SET_URI
+            - name: DDL_AUTO
+              valueFrom:
+                configMapKeyRef:
+                  name: app-configmap-vehicle-application
+                  key: DDL_AUTO
+            - name: SHOW_SQL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-configmap-vehicle-application
+                  key: SHOW_SQL
+            - name: URL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-configmap-vehicle-application
+                  key: URL_DATABASE
+            - name: USER_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-configmap-vehicle-application
+                  key: USER_DATABASE
+            - name: USER_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-configmap-vehicle-application
+                  key: USER_ENDPOINT
+            - name: APP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-configmap-vehicle-application
+                  key: APP_PORT
+            - name: PASSWORD_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret-user
+                  key: MYSQL_PASSWORD
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "700m"
+              memory: "768Mi"
