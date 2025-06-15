@@ -1,7 +1,6 @@
-# Hackaton - API Users
+# Vehicle Application
 
-
-API responsável por fazer a criação do usuário, geração e validação do token de acesso.
+API responsável por fazer a gestão dos veículos, incluindo cadastro, listagem de veículos vendidos e disponíveis para venda, edição e compra.
 
 # Pré-requisitos
 1. Docker
@@ -22,50 +21,76 @@ API responsável por fazer a criação do usuário, geração e validação do t
 kubectl apply -f kubernetes --recursive  # você vai criar todos os recursos kubernetes que estão dentro da pasta 'kubernetes/'
 ```
 
-### Obs.: Caso esteja utilizando o minikube para rodar seu cluster local, é necessário executar o campo abaixo:
-```bash
-kubectl get svc # neste comando você listará todas as services. Localize a service do app
-kubectl port-forward svc-lanchonete-app-cliente 8080:80 # neste comando você vai direcionar todas as chamadas da porta 8080 para a porta 80 do cluster
-```
-
 #### Após os passos acima, a API estará funcionando e será possível realizar as operações, conforme descrito abaixo.
 
 # Passo a passo funcional da API
 
 ### **Operações Disponíveis nesta API**
 ![POST](https://img.shields.io/badge/POST-green?style=for-the-badge)  
-**Rota:** `/create`  
-**Descrição:** Realiza o cadastro de um usuário.  
+**Rota:** `/vehicle`  
+**Descrição:** Realiza a criação de um veículo.  
+**Header**: Authorization: Bearer <jwt>  
 **Body:**
 
 ```json
 {
-   "email": "string",
-   "password": "string"
+   "brand": "chevrolet",
+   "model": "onix",
+   "modelYear": "2020",
+   "factoryYear": "2020",
+   "color": "white",
+   "price": 1,
+   "marketReferenceCode": "5",
+   "toSell": true
 }
 ```
 
-![POST](https://img.shields.io/badge/POST-green?style=for-the-badge)  
-**Rota:** `/auth`  
-**Descrição:** Faz a geração do JWT.
+![PUT](https://img.shields.io/badge/PUT-orange?style=for-the-badge)  
+**Rota:** `/vehicle`  
+**Descrição:** Edita os dados do veículo.  
+**Header**: Authorization: Bearer <jwt>  
 **Body:**
 
 ```json
 {
-   "email": "string",
-   "password": "string"
+   "brand": "chevrolet",
+   "model": "onix",
+   "modelYear": "2020",
+   "factoryYear": "2020",
+   "color": "white",
+   "price": 1,
+   "marketReferenceCode": "2",
+   "toSell": true
 }
 ```
 
 ![POST](https://img.shields.io/badge/POST-green?style=for-the-badge)  
-**Rota:** `/auth/validate`  
-**Descrição:** Realiza a validação do JWT.
+**Rota:** `/vehicle/buy`  
+**Descrição:** Realiza a compra de um veículo.  
+**Header**: Authorization: Bearer <jwt>  
+**Body:**
+
+```json
+{
+   "marketReferenceCode": "5"
+}
+```
+
+![GET](https://img.shields.io/badge/GET-blue?style=for-the-badge)  
+**Rota:** `/vehicle/sold`  
+**Descrição:** Lista todos os veículos vendidos.  
+**Header**: Authorization: Bearer <jwt>  
+
+![GET](https://img.shields.io/badge/GET-blue?style=for-the-badge)  
+**Rota:** `/vehicle/sales`  
+**Descrição:** Lista todos os veículos disponíveis para venda.  
 **Header**: Authorization: Bearer <jwt>
+
 
 # Documentações
 ## Desenho da arquitetura
 
-![Desenho de arquitetura](desenho-arquitetura-Página-1.jpg)
+![Desenho de arquitetura](arquitetura.png)
 
 # Relatório de cobertura de teste
 
