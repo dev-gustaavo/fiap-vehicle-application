@@ -5,11 +5,12 @@ metadata:
   labels:
     app: svc-vehicle
 spec:
-  type: NodePort
+#  type: NodePort
+  type: LoadBalancer
   ports:
     - protocol: TCP
       port: 80
       targetPort: 80
-      nodePort: 32703
+#      nodePort: 32703
   selector:
     app: pod-vehicle-application
